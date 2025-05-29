@@ -82,106 +82,111 @@ const Portfolio = () => {
   const containerRef = useRef(null);
   const horizontalRef = useRef(null);
   const [visibleProjects, setVisibleProjects] = useState(4);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(false); // مقدار اولیه false است
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
-    checkMobile();
+    const checkMobile = () => {
+      const mobileCheck = window.innerWidth <= 768;
+      console.log(`Portfolio: checkMobile - window.innerWidth: ${window.innerWidth}, isMobile set to: ${mobileCheck}`);
+      setIsMobile(mobileCheck);
+    };
+    checkMobile(); // بررسی اولیه در زمان mount
     window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+    return () => {
+      console.log("Portfolio: Cleaning up resize listener for checkMobile");
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []); // این افکت یک بار پس از اولین رندر اجرا می‌شود
 
   useLayoutEffect(() => {
-    console.log("Portfolio GSAP effect triggered. isMobile:", isMobile);
-
-    if (!containerRef.current || !horizontalRef.current) {
-      console.warn("Portfolio GSAP: Refs not available yet for initial setup.");
-      return;
-    }
+    console.log(`Portfolio: useLayoutEffect - Top. Current isMobile state: ${isMobile}`);
     
-    // تابع راه‌اندازی انیمیشن‌ها
-    const setupGsapAnimations = () => {
-        // بررسی مجدد ref ها چون ممکن است در زمان اجرای setTimeout تغییر کرده باشند (هرچند بعید است)
-        if (!containerRef.current || !horizontalRef.current) {
-            console.warn("Portfolio GSAP: Refs not available at timeout execution.");
+    // ایجاد context برای GSAP در ابتدای افکت
+    // containerRef.current ممکن است در اولین اجرای useLayoutEffect هنوز null باشد اگر Portfolio شرطی رندر شود
+    // اما در ساختار فعلی App.js، Portfolio همیشه رندر می‌شود.
+    const currentContainerRef = containerRef.current; // Capture current value
+    let ctx = gsap.context(() => {}, currentContainerRef); 
+    let animationSetupTimer;
+
+    if (!currentContainerRef || !horizontalRef.current) {
+      console.warn("Portfolio: Refs not available for GSAP setup in useLayoutEffect.");
+      return () => {
+        // حتی اگر ref ها موجود نباشند، ctx.revert() را برای پاکسازی context خالی فراخوانی می‌کنیم
+        if (ctx) ctx.revert();
+      };
+    }
+
+    const setupAnimations = () => {
+      // این تابع داخل setTimeout اجرا خواهد شد
+      console.log(`Portfolio: setupAnimations - Running. Current isMobile state: ${isMobile}`);
+      
+      // پاک کردن انیمیشن‌های قبلی که به این context اضافه شده‌اند
+      // این مهم است چون isMobile ممکن است تغییر کند و ما نیاز به تنظیم مجدد انیمیشن‌ها داریم
+      ctx.revert();
+
+      if (!isMobile) { // حالت دسکتاپ
+        const horizontal = horizontalRef.current;
+        const container = currentContainerRef; // استفاده از مقدار capture شده
+
+        if (!horizontal || !container) {
+            console.warn("Portfolio: Desktop - horizontal or container ref became null in timeout.");
             return;
         }
 
-        const ctx = gsap.context(() => {
-            if (!isMobile) {
-                const horizontal = horizontalRef.current;
-                const container = containerRef.current;
+        const scrollableWidth = horizontal.scrollWidth;
+        const visibleWidth = container.clientWidth;
+        const scrollDistance = scrollableWidth - visibleWidth;
 
-                // اکنون که این تابع با تاخیر اجرا می‌شود، شانس بیشتری برای رندر شدن فرزندان وجود دارد
-                const scrollableWidth = horizontal.scrollWidth;
-                const visibleWidth = container.clientWidth;
-                const scrollDistance = scrollableWidth - visibleWidth;
+        console.log("Portfolio: Desktop GSAP calculations (inside setupAnimations):", {
+            scrollableWidth, visibleWidth, scrollDistance, horizontalChildren: horizontal.children.length
+        });
 
-                console.log("Portfolio Desktop GSAP calculations (inside timeout):", {
-                    scrollableWidth,
-                    visibleWidth,
-                    scrollDistance,
-                    horizontalChildren: horizontal.children.length // بررسی تعداد فرزندان در این لحظه
+        if (horizontal.children.length === 0 && projectsData.length > 0) {
+            console.warn("Portfolio: Desktop - horizontalRef has no children. Check ProjectCard rendering.");
+        }
+
+        if (scrollDistance > 0) {
+            // اضافه کردن انیمیشن به context برای پاکسازی خودکار
+            ctx.add(() => {
+                gsap.to(horizontal, {
+                    x: -scrollDistance,
+                    ease: "none",
+                    scrollTrigger: {
+                        trigger: container, start: "top top", end: () => `+=${scrollDistance}`,
+                        scrub: 1, pin: true, anticipatePin: 1, invalidateOnRefresh: true,
+                    },
                 });
-
-                if (horizontal.children.length === 0 && projectsData.length > 0) {
-                    console.warn("Portfolio: horizontalRef has no children even after timeout. Check rendering of ProjectCards.");
-                }
-
-                if (scrollDistance > 0) {
-                    gsap.to(horizontal, {
-                        x: -scrollDistance,
-                        ease: "none",
-                        scrollTrigger: {
-                        trigger: container,
-                        start: "top top",
-                        end: () => `+=${scrollDistance}`,
-                        scrub: 1,
-                        pin: true,
-                        anticipatePin: 1,
-                        invalidateOnRefresh: true,
-                        },
-                    });
-                } else {
-                    console.log("Portfolio: scrollDistance is not positive (inside timeout), no horizontal scroll applied.");
-                    gsap.set(horizontal, { x: 0 }); 
-                }
-            } else {
-                console.log("Portfolio: Mobile view (inside timeout), ensuring horizontal scroll elements are reset.");
-                gsap.killTweensOf(horizontalRef.current);
-                gsap.set(horizontalRef.current, { x: 0 });
-            }
-        }, containerRef);
-        
-        // بازگرداندن context در cleanup خود setupGsapAnimations اگر نیاز باشد، اما ctx اصلی در cleanup بیرونی revert می‌شود
-        return () => ctx.revert(); // این cleanup برای انیمیشن‌های ایجاد شده در این scope است
+            });
+        } else {
+            console.log("Portfolio: Desktop - scrollDistance not positive. No horizontal scroll.");
+            ctx.add(() => { gsap.set(horizontal, { x: 0 }); });
+        }
+      } else { // حالت موبایل
+        console.log("Portfolio: Mobile - resetting horizontal scroll elements.");
+        const horizontal = horizontalRef.current;
+        if (horizontal) {
+            // اضافه کردن عملیات ریست به context
+            ctx.add(() => {
+                gsap.killTweensOf(horizontal); // توقف هرگونه انیمیشن فعال روی این المان
+                gsap.set(horizontal, { x: 0 }); // ریست کردن موقعیت x
+            });
+        } else {
+            console.warn("Portfolio: Mobile - horizontalRef is null in timeout.");
+        }
+      }
     };
 
-    // اجرای تابع راه‌اندازی با یک تأخیر کوچک (0 میلی‌ثانیه)
-    // این کار اجرای setupGsapAnimations را به انتهای صف اجرای فعلی جاوااسکریپت منتقل می‌کند
-    // و به React فرصت می‌دهد تا رندر فرزندان را کامل کند.
-    const timerId = setTimeout(setupGsapAnimations, 100); // افزایش تاخیر برای تست بیشتر
+    // اجرای تابع راه‌اندازی با یک تأخیر کوچک
+    animationSetupTimer = setTimeout(setupAnimations, 150); // کمی افزایش تاخیر برای اطمینان بیشتر در Vercel
 
-    // Cleanup اصلی useLayoutEffect
     return () => {
-        console.log("Portfolio GSAP cleanup (main effect). isMobile:", isMobile);
-        clearTimeout(timerId); // پاک کردن تایمر در صورت unmount شدن کامپوننت قبل از اجرای timeout
-        // اگر setupGsapAnimations اجرا شده باشد، ctx.revert() آن باید توسط خودش یا در اینجا مدیریت شود.
-        // از آنجایی که ctx در setupGsapAnimations تعریف شده، revert آن هم باید همانجا یا از طریق بازگرداندن ctx باشد.
-        // برای سادگی، revert را به خود تابع setupGsapAnimations می‌سپاریم و در اینجا فقط تایمر را پاک می‌کنیم.
-        // یا اگر ctx را به بیرون منتقل کنیم:
-        // if (mainCtxRef.current) mainCtxRef.current.revert();
-        // اما چون ctx داخل setupGsapAnimations است، خودش باید revert شود.
-        // راه ساده‌تر این است که تابع cleanup از setupGsapAnimations را اینجا فراخوانی نکنیم،
-        // و به ctx.revert() که در خود setupGsapAnimations برگردانده می‌شود، اتکا کنیم.
-        // یا کل ctx را در useLayoutEffect مدیریت کنیم:
-        
-        // روش بهتر: ctx را در useLayoutEffect تعریف و به setupGsapAnimations پاس دهیم یا setupGsapAnimations را داخل ctx تعریف کنیم.
-        // برای این اصلاح، ctx را داخل setupGsapAnimations نگه می‌داریم و cleanup آن هم همانجا خواهد بود.
-        // اطمینان حاصل کنید که اگر setupGsapAnimations اجرا شد، cleanup آن هم اجرا شود.
+      console.log(`Portfolio: useLayoutEffect - Cleanup. isMobile (stale value in closure): ${isMobile}`);
+      clearTimeout(animationSetupTimer);
+      ctx.revert(); // پاکسازی تمام انیمیشن‌های اضافه شده به این نمونه از context
     };
+  }, [isMobile]); // اجرای مجدد این افکت فقط زمانی که isMobile تغییر می‌کند
 
-  }, [isMobile]);
+  console.log(`Portfolio: Rendering with isMobile: ${isMobile}`);
 
   const loadMore = () => {
     setVisibleProjects((prev) => Math.min(prev + 4, projectsData.length));
@@ -191,7 +196,7 @@ const Portfolio = () => {
     <section
       id="portfolio"
       ref={containerRef}
-      className="min-h-screen flex flex-col bg-gradient-to-br from-[#100e1c] to-[#1d1635] text-white pt-20 pb-12 md:pt-28 md:pb-20 overflow-hidden"
+      className="portfolio-section min-h-screen flex flex-col bg-gradient-to-br from-[#100e1c] to-[#1d1635] text-white pt-20 pb-12 md:pt-10 md:pb-20 overflow-hidden" // کلاس portfolio-section اضافه شد
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <h3 className="text-4xl sm:text-5xl font-bold text-center mb-12 lg:mb-20">
@@ -200,8 +205,12 @@ const Portfolio = () => {
           </span>
         </h3>
       </div>
+      {/* رندر شرطی بر اساس isMobile */}
       {isMobile ? (
+        // حالت موبایل: نمایش عمودی با دکمه "Load More"
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          {/* ref={horizontalRef} در حالت موبایل هم به div والد کارت‌ها اشاره می‌کند */}
+          {/* این div در حالت موبایل به صورت grid نمایش داده می‌شود */}
           <div ref={horizontalRef} className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
             {projectsData
               .slice(0, visibleProjects)
@@ -221,12 +230,14 @@ const Portfolio = () => {
           )}
         </div>
       ) : (
+        // حالت دسکتاپ: اسکرول افقی
+        // این div والد کارت‌ها برای اسکرول افقی است
         <div
           ref={horizontalRef}
-          className="flex gap-6 md:gap-8 w-fit px-4 sm:px-8 md:px-12 lg:px-24" // مهم: این div باید فرزندان ProjectCard را داشته باشد
+          className="flex gap-6 md:gap-8 w-fit px-4 sm:px-8 md:px-12 lg:px-24"
           style={{ willChange: "transform" }}
         >
-          {projectsData.map((project) => ( // این map باید فرزندان را ایجاد کند
+          {projectsData.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>
