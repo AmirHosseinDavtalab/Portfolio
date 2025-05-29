@@ -1,0 +1,136 @@
+/* Keep existing App.css styles */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #0d1117; /* This will be covered by #smooth-wrapper or preloader */
+}
+
+/* ... (all your existing styles from App.css) ... */
+
+.gradient-purple {
+  background: linear-gradient(135deg, #2e0249, #570a57);
+}
+
+.typing-animation {
+  animation: typing 2s steps(20) infinite;
+}
+
+@keyframes typing {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+.fade-up {
+  opacity: 0;
+  animation: fadeUp 1s forwards;
+}
+
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rotate-animation {
+  animation: rotate 4s linear infinite;
+}
+
+@keyframes rotate {
+  to { transform: rotate(360deg); }
+}
+
+.pop-up {
+  animation: popUp 0.5s ease-out forwards;
+}
+
+@keyframes popUp {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+.bounce-animation a {
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}
+
+.fade-out {
+  opacity: 1;
+  animation: fadeOut 1s reverse forwards;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.bg-diagonal-animate {
+  position: fixed;
+  inset: 0;
+  z-index: -50;
+  background: linear-gradient(135deg, #2e0249, #570a57, #470065, #570a57, #2e0249);
+  background-size: 400% 400%;
+  animation: bgShift 40s ease-in-out infinite;
+}
+
+.glow-effect {
+  position: fixed;
+  inset: 0;
+  z-index: -40;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 70%);
+  animation: glowMove 60s ease-in-out infinite;
+}
+
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -30;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+}
+
+@keyframes bgShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes glowMove {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+.animate-pulse { /* Your existing pulse, ensure it doesn't conflict if preloader uses its own */
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.1; } /* This might make your preloader bg elements too faint */
+  50% { opacity: 0.2; }
+}
+
+header { /* Your existing header style */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-section {
+  /* background-image: url('./img/ChatGPT\ Image\ May\ 27\,\ 2025\,\ 07_00_20\ PM.png'); */ /* Path might need adjustment based on your public folder structure */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100vh;
+  width: 100%;
+}
+.about-section {
+  margin: 150px auto;
+}
+
+/* Styles for Preloader (can be in App.css or a separate Preloader.css) */
+/* The preloader itself is styled with Tailwind in Preloader.js */
+/* No extra CSS needed here unless you want very custom animations not achievable with Tailwind */
+
